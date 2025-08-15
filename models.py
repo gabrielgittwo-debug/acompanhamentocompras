@@ -22,7 +22,9 @@ class AcquisitionType(Enum):
 class AcquisitionStatus(Enum):
     EM_ANALISE = 'em_analise'
     APROVADO = 'aprovado'
+    AGUARDANDO_ORCAMENTO = 'aguardando_orcamento'
     EM_COTACAO = 'em_cotacao'
+    ORCAMENTO_RECEBIDO = 'orcamento_recebido'
     PEDIDO_REALIZADO = 'pedido_realizado'
     RECEBIDO = 'recebido'
     FECHADO = 'fechado'
@@ -162,6 +164,14 @@ class Acquisition(db.Model):
     payment_method = db.Column(db.Enum(PaymentMethod))
     budget_source = db.Column(db.Enum(BudgetSource))
     
+    # Budget tracking
+    budget_requested_at = db.Column(db.DateTime)
+    budget_deadline = db.Column(db.DateTime)
+    budget_received_at = db.Column(db.DateTime)
+    budget_value = db.Column(db.Numeric(12, 2))
+    budget_provider = db.Column(db.String(200))
+    budget_notes = db.Column(db.Text)
+    
     # Relationships
     requester_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
     approver_id = db.Column(db.String, db.ForeignKey('users.id'))
@@ -183,7 +193,9 @@ class Acquisition(db.Model):
         status_map = {
             AcquisitionStatus.EM_ANALISE: 'Em Análise',
             AcquisitionStatus.APROVADO: 'Aprovado',
+            AcquisitionStatus.AGUARDANDO_ORCAMENTO: 'Aguardando Orçamento',
             AcquisitionStatus.EM_COTACAO: 'Em Cotação',
+            AcquisitionStatus.ORCAMENTO_RECEBIDO: 'Orçamento Recebido',
             AcquisitionStatus.PEDIDO_REALIZADO: 'Pedido Realizado',
             AcquisitionStatus.RECEBIDO: 'Recebido/Concluído',
             AcquisitionStatus.FECHADO: 'Fechado'

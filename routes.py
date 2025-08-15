@@ -187,7 +187,9 @@ def acquisition_detail(id):
     return render_template('acquisition/detail.html',
                          acquisition=acquisition,
                          PaymentMethod=PaymentMethod,
-                         AcquisitionStatus=AcquisitionStatus)
+                         AcquisitionStatus=AcquisitionStatus,
+                         now=datetime.now,
+                         timedelta=timedelta)
 
 @app.route('/acquisitions/<int:id>/update-status', methods=['POST'])
 @login_required
@@ -213,10 +215,22 @@ def update_acquisition_status(id):
         old_status = acquisition.status
         acquisition.status = new_status
         
-        # Update specific timestamps
+        # Update specific timestamps and fields
         if new_status == AcquisitionStatus.APROVADO:
             acquisition.approved_at = datetime.now()
             acquisition.approver_id = current_user.id
+        elif new_status == AcquisitionStatus.AGUARDANDO_ORCAMENTO:
+            acquisition.budget_requested_at = datetime.now()
+            if request.form.get('budget_deadline'):
+                acquisition.budget_deadline = datetime.strptime(request.form['budget_deadline'], '%Y-%m-%d')
+        elif new_status == AcquisitionStatus.ORCAMENTO_RECEBIDO:
+            acquisition.budget_received_at = datetime.now()
+            if request.form.get('budget_value'):
+                acquisition.budget_value = float(request.form['budget_value'])
+            if request.form.get('budget_provider'):
+                acquisition.budget_provider = request.form['budget_provider']
+            if request.form.get('budget_notes'):
+                acquisition.budget_notes = request.form['budget_notes']
         elif new_status == AcquisitionStatus.RECEBIDO:
             acquisition.completed_at = datetime.now()
         
@@ -417,11 +431,16 @@ def create_default_data():
     if Category.query.count() == 0:
         # Service categories
         service_categories = [
-            ('Manutenção Predial', 'Pintura, elétrica, hidráulica, reformas'),
-            ('Serviços de Limpeza', 'Limpeza, jardinagem e portaria'),
-            ('Consultoria/Treinamento', 'Consultorias ou treinamentos externos'),
-            ('Instalação/Configuração', 'Instalação ou configuração de sistemas'),
-            ('Mão de Obra Temporária', 'Contratos temporários de mão de obra')
+            ('Manutenção Predial', 'Pintura, elétrica, hidráulica, reformas, carpintaria'),
+            ('Serviços de Limpeza', 'Limpeza predial, jardinagem e portaria'),
+            ('Consultoria/Treinamento', 'Consultorias técnicas ou treinamentos externos'),
+            ('Instalação/Configuração', 'Instalação ou configuração de sistemas e equipamentos'),
+            ('Mão de Obra Temporária', 'Contratos temporários de mão de obra especializada'),
+            ('Serviços de Segurança', 'Vigilância, monitoramento e segurança patrimonial'),
+            ('Transporte e Logística', 'Fretes, mudanças e transporte de equipamentos'),
+            ('Serviços Gráficos', 'Impressão, encadernação e materiais promocionais'),
+            ('Calibração e Manutenção', 'Calibração de equipamentos e manutenção preventiva'),
+            ('Serviços de Comunicação', 'Telefonia, internet e sistemas de comunicação')
         ]
         
         for name, desc in service_categories:
@@ -433,11 +452,18 @@ def create_default_data():
         
         # Supply categories
         supply_categories = [
-            ('Equipamentos de Laboratório', 'Multímetros, ferramentas, máquinas'),
-            ('Equipamentos de Informática', 'Computadores e periféricos'),
-            ('Equipamentos de Cursos', 'Dev, logística, mecânica, eletrotécnica'),
-            ('Materiais de Consumo', 'Papel, tinta, cabos, peças'),
-            ('Software/Licenças', 'Software e licenças de sistemas')
+            ('Equipamentos de Laboratório', 'Multímetros, osciloscópios, bancadas, ferramentas de precisão'),
+            ('Equipamentos de Informática', 'Computadores, notebooks, periféricos, redes'),
+            ('Equipamentos de Cursos', 'Equipamentos para desenvolvimento, logística, mecânica, eletrotécnica'),
+            ('Materiais de Consumo', 'Papel, tinta, cabos, componentes eletrônicos, peças de reposição'),
+            ('Software/Licenças', 'Software educacional, sistemas operacionais, licenças'),
+            ('Mobiliário Escolar', 'Carteiras, cadeiras, mesas, armários, quadros'),
+            ('Equipamentos de Segurança', 'EPIs, extintores, câmeras, alarmes'),
+            ('Material Didático', 'Livros, apostilas, materiais pedagógicos'),
+            ('Ferramentas e Instrumentos', 'Ferramentas manuais, instrumentos de medição'),
+            ('Materiais de Construção', 'Materiais para obras e reformas prediais'),
+            ('Equipamentos Audiovisuais', 'Projetores, telas, sistemas de som, TVs'),
+            ('Materiais de Escritório', 'Papelaria, suprimentos administrativos')
         ]
         
         for name, desc in supply_categories:
@@ -550,3 +576,61 @@ def confirm_excel_import():
         flash(f'Erro na importação: {str(e)}', 'error')
     
     return redirect(url_for('list_acquisitions'))
+
+# Budget management routes
+@app.route('/acquisitions/<int:id>/budget', methods=['POST'])
+@login_required
+def update_budget(id):
+    acquisition = Acquisition.query.get_or_404(id)
+    
+    # Check permissions (admin or requester can update budget info)
+    if not (current_user.is_admin() or acquisition.requester_id == current_user.id):
+        flash('Você não tem permissão para alterar estas informações.', 'error')
+        return redirect(url_for('acquisition_detail', id=id))
+    
+    try:
+        action = request.form.get('action')
+        
+        if action == 'request_budget':
+            acquisition.status = AcquisitionStatus.AGUARDANDO_ORCAMENTO
+            acquisition.budget_requested_at = datetime.now()
+            if request.form.get('budget_deadline'):
+                acquisition.budget_deadline = datetime.strptime(request.form['budget_deadline'], '%Y-%m-%d')
+            
+            # Create status history
+            status_history = StatusHistory()
+            status_history.acquisition_id = acquisition.id
+            status_history.user_id = current_user.id
+            status_history.old_status = acquisition.status
+            status_history.new_status = AcquisitionStatus.AGUARDANDO_ORCAMENTO
+            status_history.comment = f"Orçamento solicitado - Prazo: {request.form.get('budget_deadline', 'Não definido')}"
+            db.session.add(status_history)
+            
+        elif action == 'receive_budget':
+            acquisition.status = AcquisitionStatus.ORCAMENTO_RECEBIDO
+            acquisition.budget_received_at = datetime.now()
+            
+            if request.form.get('budget_value'):
+                acquisition.budget_value = float(request.form['budget_value'])
+            if request.form.get('budget_provider'):
+                acquisition.budget_provider = request.form['budget_provider']
+            if request.form.get('budget_notes'):
+                acquisition.budget_notes = request.form['budget_notes']
+            
+            # Create status history
+            status_history = StatusHistory()
+            status_history.acquisition_id = acquisition.id
+            status_history.user_id = current_user.id
+            status_history.old_status = acquisition.status
+            status_history.new_status = AcquisitionStatus.ORCAMENTO_RECEBIDO
+            status_history.comment = f"Orçamento recebido - Valor: R$ {acquisition.budget_value} - Fornecedor: {acquisition.budget_provider}"
+            db.session.add(status_history)
+        
+        db.session.commit()
+        flash('Informações do orçamento atualizadas com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar orçamento: {str(e)}', 'error')
+    
+    return redirect(url_for('acquisition_detail', id=id))

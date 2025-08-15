@@ -52,7 +52,9 @@
                                 <span class="badge 
                                     {% if acquisition.status.value == 'em_analise' %}bg-warning
                                     {% elif acquisition.status.value == 'aprovado' %}bg-success
+                                    {% elif acquisition.status.value == 'aguardando_orcamento' %}bg-info
                                     {% elif acquisition.status.value == 'em_cotacao' %}bg-info
+                                    {% elif acquisition.status.value == 'orcamento_recebido' %}bg-primary
                                     {% elif acquisition.status.value == 'pedido_realizado' %}bg-primary
                                     {% elif acquisition.status.value == 'recebido' %}bg-success
                                     {% elif acquisition.status.value == 'fechado' %}bg-secondary
@@ -239,6 +241,8 @@
                     {% endif %}
                 </div>
             </div>
+            <!-- Budget Tracking -->
+            {% include 'acquisition/budget_card.html' %}
         </div>
 
         <!-- Sidebar -->
@@ -264,7 +268,9 @@
                                     <option value="{{ status.value }}">
                                         {% if status.value == 'em_analise' %}Em Análise
                                         {% elif status.value == 'aprovado' %}Aprovado
+                                        {% elif status.value == 'aguardando_orcamento' %}Aguardando Orçamento
                                         {% elif status.value == 'em_cotacao' %}Em Cotação
+                                        {% elif status.value == 'orcamento_recebido' %}Orçamento Recebido
                                         {% elif status.value == 'pedido_realizado' %}Pedido Realizado
                                         {% elif status.value == 'recebido' %}Recebido/Concluído
                                         {% elif status.value == 'fechado' %}Fechado

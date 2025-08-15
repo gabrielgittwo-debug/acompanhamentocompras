@@ -46,6 +46,8 @@ def import_excel_acquisitions(file_path, user_id):
                 
                 if 'não iniciada' in excel_status:
                     system_status = AcquisitionStatus.EM_ANALISE
+                elif 'orçamento' in excel_status or 'cotação' in excel_status:
+                    system_status = AcquisitionStatus.AGUARDANDO_ORCAMENTO
                 elif 'iniciada' in excel_status or 'andamento' in excel_status:
                     system_status = AcquisitionStatus.EM_COTACAO
                 elif 'concluída' in excel_status or 'finalizada' in excel_status:

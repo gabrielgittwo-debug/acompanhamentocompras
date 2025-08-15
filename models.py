@@ -1,9 +1,10 @@
 from datetime import datetime
 from enum import Enum
 from app import db
-from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import UniqueConstraint
+import uuid
 
 # User roles enum
 class UserRole(Enum):
@@ -42,16 +43,19 @@ class BudgetSource(Enum):
     FEDERAL = 'federal'
     OUTROS = 'outros'
 
-# (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    id = db.Column(db.String, primary_key=True)
-    email = db.Column(db.String, unique=True, nullable=True)
-    first_name = db.Column(db.String, nullable=True)
-    last_name = db.Column(db.String, nullable=True)
+    id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
     profile_image_url = db.Column(db.String, nullable=True)
     role = db.Column(db.Enum(UserRole), default=UserRole.SOLICITANTE)
     active = db.Column(db.Boolean, default=True)
+    approved = db.Column(db.Boolean, default=False)  # Admin approval required
+    approved_by_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -60,6 +64,7 @@ class User(UserMixin, db.Model):
     acquisitions = db.relationship('Acquisition', foreign_keys='Acquisition.requester_id', backref='requester')
     approvals = db.relationship('Acquisition', foreign_keys='Acquisition.approver_id', backref='approver')
     status_changes = db.relationship('StatusHistory', backref='user')
+    approved_by = db.relationship('User', remote_side=[id], backref='approved_users')
 
     @property
     def full_name(self):
@@ -75,19 +80,39 @@ class User(UserMixin, db.Model):
 
     def is_admin(self):
         return self.role == UserRole.ADMIN
+    
+    def set_password(self, password):
+        """Set password hash"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Check password against hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def is_authenticated(self):
+        """User must be approved to be authenticated"""
+        return self.approved and self.active
 
-# (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-class OAuth(OAuthConsumerMixin, db.Model):
-    user_id = db.Column(db.String, db.ForeignKey(User.id))
-    browser_session_key = db.Column(db.String, nullable=False)
-    user = db.relationship(User)
-
-    __table_args__ = (UniqueConstraint(
-        'user_id',
-        'browser_session_key',
-        'provider',
-        name='uq_user_browser_session_key_provider',
-    ),)
+# User registration pending approval
+class PendingUser(db.Model):
+    __tablename__ = 'pending_users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    requested_role = db.Column(db.Enum(UserRole), default=UserRole.SOLICITANTE)
+    message = db.Column(db.Text, nullable=True)  # User's request message
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    def set_password(self, password):
+        """Set password hash"""
+        self.password_hash = generate_password_hash(password)
+        
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
 class CostCenter(db.Model):
     __tablename__ = 'cost_centers'

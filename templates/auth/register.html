@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitar Cadastro - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header senai-bg text-white text-center py-4">
+                        <h3 class="mb-0">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Solicitar Cadastro
+                        </h3>
+                        <p class="mb-0 mt-2">Sistema de Aquisições - SENAI Morvan Figueiredo</p>
+                    </div>
+                    
+                    <div class="card-body p-5">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Importante:</strong> Seu cadastro será analisado pelo administrador antes da aprovação.
+                        </div>
+                        
+                        <form method="POST">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="first_name" class="form-label">
+                                        <i class="fas fa-user me-2"></i>Nome *
+                                    </label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                                           placeholder="Seu nome" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="last_name" class="form-label">
+                                        <i class="fas fa-user me-2"></i>Sobrenome *
+                                    </label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                                           placeholder="Seu sobrenome" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>Email *
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="seu@email.com" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">
+                                        <i class="fas fa-lock me-2"></i>Senha *
+                                    </label>
+                                    <input type="password" class="form-control" id="password" name="password" 
+                                           placeholder="Mínimo 6 caracteres" required minlength="6">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="password_confirm" class="form-label">
+                                        <i class="fas fa-lock me-2"></i>Confirmar Senha *
+                                    </label>
+                                    <input type="password" class="form-control" id="password_confirm" name="password_confirm" 
+                                           placeholder="Repita a senha" required minlength="6">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="requested_role" class="form-label">
+                                    <i class="fas fa-user-tag me-2"></i>Perfil Solicitado
+                                </label>
+                                <select class="form-select" id="requested_role" name="requested_role">
+                                    {% for role in UserRole %}
+                                        {% if role != UserRole.ADMIN %}
+                                        <option value="{{ role.value }}" 
+                                                {% if role == UserRole.SOLICITANTE %}selected{% endif %}>
+                                            {% if role == UserRole.SOLICITANTE %}Solicitante (Criar solicitações)
+                                            {% elif role == UserRole.APROVADOR %}Aprovador (Aprovar solicitações)
+                                            {% elif role == UserRole.RECEBIMENTO %}Recebimento (Confirmar recebimentos)
+                                            {% endif %}
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="message" class="form-label">
+                                    <i class="fas fa-comment me-2"></i>Mensagem (Opcional)
+                                </label>
+                                <textarea class="form-control" id="message" name="message" rows="3" 
+                                          placeholder="Conte-nos um pouco sobre você e o motivo da solicitação"></textarea>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-senai btn-lg">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Enviar Solicitação
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <p class="text-muted">Já possui uma conta?</p>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-senai">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                Fazer Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Role Info -->
+                <div class="row g-3 mt-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon bg-info rounded-circle mx-auto mb-2" style="width: 50px; height: 50px;">
+                                <i class="fas fa-user text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Solicitante</h6>
+                            <p class="small text-muted">Criar e acompanhar solicitações</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon bg-success rounded-circle mx-auto mb-2" style="width: 50px; height: 50px;">
+                                <i class="fas fa-user-check text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Aprovador</h6>
+                            <p class="small text-muted">Aprovar solicitações</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon bg-warning rounded-circle mx-auto mb-2" style="width: 50px; height: 50px;">
+                                <i class="fas fa-truck text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Recebimento</h6>
+                            <p class="small text-muted">Confirmar recebimentos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Password confirmation validation
+document.getElementById('password_confirm').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirm = this.value;
+    
+    if (password !== confirm) {
+        this.setCustomValidity('Senhas não conferem');
+        this.classList.add('is-invalid');
+    } else {
+        this.setCustomValidity('');
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+    }
+});
+</script>
+
+<style>
+.feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+</style>
+{% endblock %}

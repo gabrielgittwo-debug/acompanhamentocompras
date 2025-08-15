@@ -2,18 +2,15 @@ import os
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, session
-from flask_login import current_user
+from flask_login import current_user, login_required
 from sqlalchemy import func, and_, or_
 from sqlalchemy.orm import joinedload
 
 from app import app, db
-from replit_auth import require_login, make_replit_blueprint
 from models import (User, Acquisition, Category, CostCenter, StatusHistory, Document, 
                    AcquisitionType, AcquisitionStatus, UserRole, PaymentMethod, BudgetSource)
 from utils.pdf_generator import generate_report_pdf
 from utils.excel_generator import generate_excel_report
-
-app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
 
 # Make session permanent
 @app.before_request
@@ -27,7 +24,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/dashboard')
-@require_login
+@login_required
 def dashboard():
     # Get statistics for dashboard
     total_acquisitions = Acquisition.query.count()
@@ -72,7 +69,7 @@ def dashboard():
                          status_data=status_data)
 
 @app.route('/acquisitions/new')
-@require_login
+@login_required
 def new_acquisition():
     categories = Category.query.filter_by(active=True).all()
     cost_centers = CostCenter.query.filter_by(active=True).all()
@@ -83,7 +80,7 @@ def new_acquisition():
                          BudgetSource=BudgetSource)
 
 @app.route('/acquisitions/create', methods=['POST'])
-@require_login
+@login_required
 def create_acquisition():
     try:
         acquisition = Acquisition(
@@ -122,7 +119,7 @@ def create_acquisition():
         return redirect(url_for('new_acquisition'))
 
 @app.route('/acquisitions')
-@require_login
+@login_required
 def list_acquisitions():
     page = request.args.get('page', 1, type=int)
     type_filter = request.args.get('type')
@@ -164,7 +161,7 @@ def list_acquisitions():
                          category_filter=category_filter)
 
 @app.route('/acquisitions/<int:id>')
-@require_login
+@login_required
 def acquisition_detail(id):
     acquisition = Acquisition.query.options(
         joinedload(Acquisition.category),
@@ -187,7 +184,7 @@ def acquisition_detail(id):
                          AcquisitionStatus=AcquisitionStatus)
 
 @app.route('/acquisitions/<int:id>/update-status', methods=['POST'])
-@require_login
+@login_required
 def update_acquisition_status(id):
     acquisition = Acquisition.query.get_or_404(id)
     new_status = AcquisitionStatus(request.form['status'])
@@ -244,7 +241,7 @@ def update_acquisition_status(id):
     return redirect(url_for('acquisition_detail', id=id))
 
 @app.route('/acquisitions/<int:id>/upload-document', methods=['POST'])
-@require_login
+@login_required
 def upload_document(id):
     acquisition = Acquisition.query.get_or_404(id)
     
@@ -294,7 +291,7 @@ def upload_document(id):
     return redirect(url_for('acquisition_detail', id=id))
 
 @app.route('/reports')
-@require_login
+@login_required
 def reports():
     # Summary statistics
     total_value = db.session.query(func.sum(Acquisition.final_value)).scalar() or 0
@@ -337,7 +334,7 @@ def reports():
                          cost_center_data=cost_center_data)
 
 @app.route('/reports/export-pdf')
-@require_login
+@login_required
 def export_pdf_report():
     try:
         # Get filtered data
@@ -355,7 +352,7 @@ def export_pdf_report():
         return redirect(url_for('reports'))
 
 @app.route('/reports/export-excel')
-@require_login
+@login_required
 def export_excel_report():
     try:
         # Get filtered data
@@ -373,7 +370,7 @@ def export_excel_report():
         return redirect(url_for('reports'))
 
 @app.route('/admin/users')
-@require_login
+@login_required
 def admin_users():
     if not current_user.is_admin():
         flash('Acesso negado.', 'error')
@@ -383,7 +380,7 @@ def admin_users():
     return render_template('admin/users.html', users=users, UserRole=UserRole)
 
 @app.route('/admin/users/<string:user_id>/update-role', methods=['POST'])
-@require_login
+@login_required
 def update_user_role(user_id):
     if not current_user.is_admin():
         flash('Acesso negado.', 'error')

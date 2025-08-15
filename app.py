@@ -35,8 +35,13 @@ db.init_app(app)
 with app.app_context():
     # Make sure to import the models here or their tables won't be created
     import models  # noqa: F401
+    import auth  # Initialize authentication system
+    
     db.create_all()
     logging.info("Database tables created")
+    
+    # Create admin user
+    auth.create_admin_user()
     
     # Initialize default data
     from routes import create_default_data

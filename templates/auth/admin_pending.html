@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações Pendentes - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 senai-text-color">
+                <i class="fas fa-user-clock me-2"></i>
+                Solicitações de Cadastro Pendentes
+            </h1>
+            <p class="text-muted">Analise e aprove novas solicitações de usuários</p>
+        </div>
+    </div>
+
+    {% if pending_users %}
+        {% for pending_user in pending_users %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user me-2"></i>
+                        {{ pending_user.full_name }}
+                    </h5>
+                    <span class="badge bg-warning">
+                        <i class="fas fa-clock me-1"></i>
+                        Aguardando
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                <strong>Email:</strong><br>
+                                <a href="mailto:{{ pending_user.email }}" class="text-decoration-none">
+                                    {{ pending_user.email }}
+                                </a>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Data da Solicitação:</strong><br>
+                                {{ pending_user.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Perfil Solicitado:</strong><br>
+                            <span class="badge 
+                                {% if pending_user.requested_role == UserRole.APROVADOR %}bg-success
+                                {% elif pending_user.requested_role == UserRole.RECEBIMENTO %}bg-warning
+                                {% else %}bg-info
+                                {% endif %}">
+                                {% if pending_user.requested_role == UserRole.APROVADOR %}Aprovador
+                                {% elif pending_user.requested_role == UserRole.RECEBIMENTO %}Recebimento
+                                {% else %}Solicitante
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        {% if pending_user.message %}
+                        <div class="mb-3">
+                            <strong>Mensagem do Usuário:</strong><br>
+                            <div class="alert alert-light">
+                                {{ pending_user.message }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light">
+                            <h6 class="fw-bold mb-3">Ações</h6>
+                            
+                            <!-- Approve Form -->
+                            <form method="POST" action="{{ url_for('auth.approve_user', pending_id=pending_user.id) }}" class="mb-2">
+                                <div class="mb-3">
+                                    <label for="approved_role{{ pending_user.id }}" class="form-label">
+                                        <small>Perfil a ser aprovado:</small>
+                                    </label>
+                                    <select class="form-select form-select-sm" 
+                                            id="approved_role{{ pending_user.id }}" 
+                                            name="approved_role">
+                                        {% for role in UserRole %}
+                                            {% if role != UserRole.ADMIN %}
+                                            <option value="{{ role.value }}" 
+                                                    {% if role == pending_user.requested_role %}selected{% endif %}>
+                                                {% if role == UserRole.SOLICITANTE %}Solicitante
+                                                {% elif role == UserRole.APROVADOR %}Aprovador
+                                                {% elif role == UserRole.RECEBIMENTO %}Recebimento
+                                                {% endif %}
+                                            </option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success btn-sm w-100 mb-2"
+                                        onclick="return confirm('Aprovar este usuário?')">
+                                    <i class="fas fa-check me-1"></i>
+                                    Aprovar
+                                </button>
+                            </form>
+                            
+                            <!-- Reject Form -->
+                            <form method="POST" action="{{ url_for('auth.reject_user', pending_id=pending_user.id) }}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100"
+                                        onclick="return confirm('Rejeitar esta solicitação? Esta ação não pode ser desfeita.')">
+                                    <i class="fas fa-times me-1"></i>
+                                    Rejeitar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-user-check text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">Nenhuma solicitação pendente</h5>
+                <p class="text-muted">Todas as solicitações de cadastro foram processadas.</p>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-senai">
+                    <i class="fas fa-users me-2"></i>
+                    Ver Usuários Aprovados
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

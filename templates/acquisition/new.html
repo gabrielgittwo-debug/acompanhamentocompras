@@ -142,7 +142,7 @@
 
 {% block extra_js %}
 <script>
-    const categories = {{ categories | tojson }};
+    const categories = {{ categories_json | tojson }};
     
     function updateCategories() {
         const typeSelect = document.getElementById('type');

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Painel Administrativo - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 senai-text-color">
+                <i class="fas fa-tools me-2"></i>
+                Painel Administrativo
+            </h1>
+            <p class="text-muted">Gerencie o sistema de aquisições</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- User Management -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-users-cog fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Gerenciar Usuários</h5>
+                    <p class="card-text">Gerencie perfis e permissões dos usuários do sistema</p>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary">
+                        <i class="fas fa-users me-2"></i>
+                        Gerenciar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Excel Import -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-file-excel fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Importar Excel</h5>
+                    <p class="card-text">Importe aquisições em lote a partir de arquivos Excel</p>
+                    <a href="{{ url_for('import_excel_page') }}" class="btn btn-success">
+                        <i class="fas fa-file-upload me-2"></i>
+                        Importar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-info"></i>
+                    </div>
+                    <h5 class="card-title">Relatórios</h5>
+                    <p class="card-text">Gere relatórios detalhados sobre as aquisições</p>
+                    <a href="{{ url_for('reports') }}" class="btn btn-info">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Relatórios
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

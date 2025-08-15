@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Preview da Importação - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">
+                    <i class="fas fa-eye me-2"></i>
+                    Preview da Importação
+                </h1>
+                <a href="{{ url_for('import_excel_page') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-senai text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Dados encontrados: {{ total_rows }} registros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> As aquisições serão criadas com dados padrão:
+                        <ul class="mb-0 mt-2">
+                            <li>Tipo: Insumo</li>
+                            <li>Categoria: Geral</li>
+                            <li>Centro de Custo: Geral</li>
+                            <li>Status: baseado no status do Excel</li>
+                        </ul>
+                    </div>
+
+                    <h6>Preview dos primeiros registros:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nº</th>
+                                    <th>Descrição</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in preview %}
+                                <tr>
+                                    <td>{{ item.numero }}</td>
+                                    <td>{{ item.descricao }}</td>
+                                    <td>{{ item.status }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('import_excel_page') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>
+                            Cancelar
+                        </a>
+                        <form action="{{ url_for('confirm_excel_import') }}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check me-2"></i>
+                                Confirmar Importação
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -74,9 +74,16 @@ def dashboard():
 def new_acquisition():
     categories = Category.query.filter_by(active=True).all()
     cost_centers = CostCenter.query.filter_by(active=True).all()
+    
+    # Convert to JSON-serializable format
+    categories_json = [{'id': c.id, 'name': c.name, 'type': c.type.value} for c in categories]
+    cost_centers_json = [{'id': c.id, 'name': c.name, 'code': c.code} for c in cost_centers]
+    
     return render_template('acquisition/new.html', 
                          categories=categories, 
                          cost_centers=cost_centers,
+                         categories_json=categories_json,
+                         cost_centers_json=cost_centers_json,
                          AcquisitionType=AcquisitionType,
                          BudgetSource=BudgetSource)
 
@@ -395,6 +402,14 @@ def update_user_role(user_id):
         flash(f'Erro ao atualizar perfil: {str(e)}', 'error')
     
     return redirect(url_for('admin_users'))
+
+@app.route('/admin/panel')
+@login_required
+def admin_panel():
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    return render_template('admin/panel.html')
 
 # Initialize default data
 def create_default_data():

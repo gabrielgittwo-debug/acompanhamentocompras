@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
-from models import Acquisition, Category, CostCenter, AcquisitionType, AcquisitionStatus, User
 from app import db
+from models import Acquisition, Category, CostCenter, AcquisitionType, AcquisitionStatus, User
 
 def import_excel_acquisitions(file_path, user_id):
     """Import acquisitions from Excel file"""

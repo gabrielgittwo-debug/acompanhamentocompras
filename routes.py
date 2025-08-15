@@ -11,6 +11,7 @@ from models import (User, Acquisition, Category, CostCenter, StatusHistory, Docu
                    AcquisitionType, AcquisitionStatus, UserRole, PaymentMethod, BudgetSource)
 from utils.pdf_generator import generate_report_pdf
 from utils.excel_generator import generate_excel_report
+from utils.excel_importer import import_excel_acquisitions, parse_excel_preview
 
 # Make session permanent
 @app.before_request
@@ -83,30 +84,28 @@ def new_acquisition():
 @login_required
 def create_acquisition():
     try:
-        acquisition = Acquisition(
-            title=request.form['title'],
-            description=request.form['description'],
-            type=AcquisitionType(request.form['type']),
-            quantity=int(request.form.get('quantity')) if request.form.get('quantity') else None,
-            unit=request.form.get('unit'),
-            justification=request.form['justification'],
-            estimated_value=float(request.form.get('estimated_value')) if request.form.get('estimated_value') else None,
-            budget_source=BudgetSource(request.form['budget_source']),
-            category_id=int(request.form['category_id']),
-            cost_center_id=int(request.form['cost_center_id']),
-            requester_id=current_user.id
-        )
+        acquisition = Acquisition()
+        acquisition.title = request.form['title']
+        acquisition.description = request.form['description']
+        acquisition.type = AcquisitionType(request.form['type'])
+        acquisition.quantity = int(request.form.get('quantity')) if request.form.get('quantity') else None
+        acquisition.unit = request.form.get('unit')
+        acquisition.justification = request.form['justification']
+        acquisition.estimated_value = float(request.form.get('estimated_value')) if request.form.get('estimated_value') else None
+        acquisition.budget_source = BudgetSource(request.form['budget_source'])
+        acquisition.category_id = int(request.form['category_id'])
+        acquisition.cost_center_id = int(request.form['cost_center_id'])
+        acquisition.requester_id = current_user.id
         
         db.session.add(acquisition)
         db.session.flush()
         
         # Create initial status history
-        status_history = StatusHistory(
-            acquisition_id=acquisition.id,
-            user_id=current_user.id,
-            new_status=AcquisitionStatus.EM_ANALISE,
-            comment="Solicitação criada"
-        )
+        status_history = StatusHistory()
+        status_history.acquisition_id = acquisition.id
+        status_history.user_id = current_user.id
+        status_history.new_status = AcquisitionStatus.EM_ANALISE
+        status_history.comment = "Solicitação criada"
         db.session.add(status_history)
         db.session.commit()
         
@@ -221,13 +220,12 @@ def update_acquisition_status(id):
             acquisition.payment_method = PaymentMethod(request.form['payment_method'])
         
         # Create status history entry
-        status_history = StatusHistory(
-            acquisition_id=acquisition.id,
-            user_id=current_user.id,
-            old_status=old_status,
-            new_status=new_status,
-            comment=comment
-        )
+        status_history = StatusHistory()
+        status_history.acquisition_id = acquisition.id
+        status_history.user_id = current_user.id
+        status_history.old_status = old_status
+        status_history.new_status = new_status
+        status_history.comment = comment
         
         db.session.add(status_history)
         db.session.commit()
@@ -269,16 +267,15 @@ def upload_document(id):
             file.save(file_path)
             
             # Create document record
-            document = Document(
-                acquisition_id=id,
-                user_id=current_user.id,
-                filename=filename,
-                original_filename=original_filename,
-                file_path=file_path,
-                file_size=os.path.getsize(file_path),
-                mime_type=file.mimetype,
-                description=request.form.get('description', '')
-            )
+            document = Document()
+            document.acquisition_id = id
+            document.user_id = current_user.id
+            document.filename = filename
+            document.original_filename = original_filename
+            document.file_path = file_path
+            document.file_size = os.path.getsize(file_path)
+            document.mime_type = file.mimetype
+            document.description = request.form.get('description', '')
             
             db.session.add(document)
             db.session.commit()
@@ -413,7 +410,10 @@ def create_default_data():
         ]
         
         for name, desc in service_categories:
-            category = Category(name=name, description=desc, type=AcquisitionType.SERVICO)
+            category = Category()
+            category.name = name
+            category.description = desc
+            category.type = AcquisitionType.SERVICO
             db.session.add(category)
         
         # Supply categories
@@ -426,7 +426,10 @@ def create_default_data():
         ]
         
         for name, desc in supply_categories:
-            category = Category(name=name, description=desc, type=AcquisitionType.INSUMO)
+            category = Category()
+            category.name = name
+            category.description = desc
+            category.type = AcquisitionType.INSUMO
             db.session.add(category)
     
     # Create default cost centers
@@ -440,7 +443,95 @@ def create_default_data():
         ]
         
         for code, name, desc in cost_centers:
-            cost_center = CostCenter(code=code, name=name, description=desc)
+            cost_center = CostCenter()
+            cost_center.code = code
+            cost_center.name = name
+            cost_center.description = desc
             db.session.add(cost_center)
     
     db.session.commit()
+
+# Excel Import Routes
+@app.route('/admin/import-excel')
+@login_required
+def import_excel_page():
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    return render_template('admin/import_excel.html')
+
+@app.route('/admin/import-excel/upload', methods=['POST'])
+@login_required
+def upload_excel_import():
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if 'file' not in request.files:
+        flash('Nenhum arquivo selecionado.', 'error')
+        return redirect(url_for('import_excel_page'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado.', 'error')
+        return redirect(url_for('import_excel_page'))
+    
+    if file and file.filename.endswith(('.xlsx', '.xls')):
+        try:
+            # Save temporary file
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                file.save(tmp_file.name)
+                
+                # Preview the file
+                preview_result = parse_excel_preview(tmp_file.name)
+                
+                if preview_result['success']:
+                    # Store file path in session for import
+                    session['import_file_path'] = tmp_file.name
+                    
+                    return render_template('admin/import_preview.html', 
+                                         preview=preview_result['preview'],
+                                         total_rows=preview_result['total_rows'])
+                else:
+                    flash(f'Erro ao processar arquivo: {preview_result["error"]}', 'error')
+                    
+        except Exception as e:
+            flash(f'Erro ao processar arquivo: {str(e)}', 'error')
+    else:
+        flash('Arquivo deve ser .xlsx ou .xls', 'error')
+    
+    return redirect(url_for('import_excel_page'))
+
+@app.route('/admin/import-excel/confirm', methods=['POST'])
+@login_required
+def confirm_excel_import():
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    file_path = session.get('import_file_path')
+    if not file_path:
+        flash('Arquivo não encontrado. Tente novamente.', 'error')
+        return redirect(url_for('import_excel_page'))
+    
+    try:
+        result = import_excel_acquisitions(file_path, current_user.id)
+        
+        if result['success']:
+            flash(f'Importação concluída! {result["imported_count"]} aquisições importadas.', 'success')
+            if result['errors']:
+                flash(f'Alguns erros ocorreram: {", ".join(result["errors"][:3])}', 'warning')
+        else:
+            flash(f'Erro na importação: {result["error"]}', 'error')
+            
+        # Clean up
+        import os
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+        session.pop('import_file_path', None)
+        
+    except Exception as e:
+        flash(f'Erro na importação: {str(e)}', 'error')
+    
+    return redirect(url_for('list_acquisitions'))

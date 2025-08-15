@@ -8,6 +8,18 @@ The SENAI Acquisition Management System is a comprehensive web application desig
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**Migration to Replit Environment (August 15, 2025)**
+- Successfully migrated SENAI Acquisition Management System from Replit Agent to standard Replit environment
+- Fixed all database connection issues and configured PostgreSQL database
+- Resolved Flask session secret configuration
+- Fixed SQLAlchemy model constructor issues for better compatibility
+- Added Excel import functionality for bulk acquisition data import
+- Enhanced security practices with proper client/server separation
+- All LSP diagnostics addressed for production readiness
+- Admin user created: gabriel@suporte.com / 4731v8
+
 ## System Architecture
 
 ### Frontend Architecture

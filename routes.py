@@ -1,0 +1,449 @@
+import os
+from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
+from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, session
+from flask_login import current_user
+from sqlalchemy import func, and_, or_
+from sqlalchemy.orm import joinedload
+
+from app import app, db
+from replit_auth import require_login, make_replit_blueprint
+from models import (User, Acquisition, Category, CostCenter, StatusHistory, Document, 
+                   AcquisitionType, AcquisitionStatus, UserRole, PaymentMethod, BudgetSource)
+from utils.pdf_generator import generate_report_pdf
+from utils.excel_generator import generate_excel_report
+
+app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+
+# Make session permanent
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html')
+
+@app.route('/dashboard')
+@require_login
+def dashboard():
+    # Get statistics for dashboard
+    total_acquisitions = Acquisition.query.count()
+    servicos_count = Acquisition.query.filter_by(type=AcquisitionType.SERVICO).count()
+    insumos_count = Acquisition.query.filter_by(type=AcquisitionType.INSUMO).count()
+    
+    pending_approvals = Acquisition.query.filter_by(status=AcquisitionStatus.EM_ANALISE).count()
+    
+    # Recent acquisitions
+    recent_acquisitions = Acquisition.query.options(
+        joinedload(Acquisition.category),
+        joinedload(Acquisition.requester)
+    ).order_by(Acquisition.created_at.desc()).limit(5).all()
+    
+    # Monthly spending data for chart
+    current_year = datetime.now().year
+    monthly_data = db.session.query(
+        func.extract('month', Acquisition.created_at).label('month'),
+        Acquisition.type,
+        func.sum(Acquisition.final_value).label('total')
+    ).filter(
+        func.extract('year', Acquisition.created_at) == current_year,
+        Acquisition.final_value.isnot(None)
+    ).group_by(
+        func.extract('month', Acquisition.created_at),
+        Acquisition.type
+    ).all()
+    
+    # Status distribution
+    status_data = db.session.query(
+        Acquisition.status,
+        func.count(Acquisition.id).label('count')
+    ).group_by(Acquisition.status).all()
+    
+    return render_template('dashboard.html',
+                         total_acquisitions=total_acquisitions,
+                         servicos_count=servicos_count,
+                         insumos_count=insumos_count,
+                         pending_approvals=pending_approvals,
+                         recent_acquisitions=recent_acquisitions,
+                         monthly_data=monthly_data,
+                         status_data=status_data)
+
+@app.route('/acquisitions/new')
+@require_login
+def new_acquisition():
+    categories = Category.query.filter_by(active=True).all()
+    cost_centers = CostCenter.query.filter_by(active=True).all()
+    return render_template('acquisition/new.html', 
+                         categories=categories, 
+                         cost_centers=cost_centers,
+                         AcquisitionType=AcquisitionType,
+                         BudgetSource=BudgetSource)
+
+@app.route('/acquisitions/create', methods=['POST'])
+@require_login
+def create_acquisition():
+    try:
+        acquisition = Acquisition(
+            title=request.form['title'],
+            description=request.form['description'],
+            type=AcquisitionType(request.form['type']),
+            quantity=int(request.form.get('quantity')) if request.form.get('quantity') else None,
+            unit=request.form.get('unit'),
+            justification=request.form['justification'],
+            estimated_value=float(request.form.get('estimated_value')) if request.form.get('estimated_value') else None,
+            budget_source=BudgetSource(request.form['budget_source']),
+            category_id=int(request.form['category_id']),
+            cost_center_id=int(request.form['cost_center_id']),
+            requester_id=current_user.id
+        )
+        
+        db.session.add(acquisition)
+        db.session.flush()
+        
+        # Create initial status history
+        status_history = StatusHistory(
+            acquisition_id=acquisition.id,
+            user_id=current_user.id,
+            new_status=AcquisitionStatus.EM_ANALISE,
+            comment="Solicitação criada"
+        )
+        db.session.add(status_history)
+        db.session.commit()
+        
+        flash('Solicitação criada com sucesso!', 'success')
+        return redirect(url_for('acquisition_detail', id=acquisition.id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao criar solicitação: {str(e)}', 'error')
+        return redirect(url_for('new_acquisition'))
+
+@app.route('/acquisitions')
+@require_login
+def list_acquisitions():
+    page = request.args.get('page', 1, type=int)
+    type_filter = request.args.get('type')
+    status_filter = request.args.get('status')
+    category_filter = request.args.get('category_id', type=int)
+    
+    query = Acquisition.query.options(
+        joinedload(Acquisition.category),
+        joinedload(Acquisition.cost_center),
+        joinedload(Acquisition.requester)
+    )
+    
+    # Apply filters
+    if type_filter:
+        query = query.filter(Acquisition.type == AcquisitionType(type_filter))
+    if status_filter:
+        query = query.filter(Acquisition.status == AcquisitionStatus(status_filter))
+    if category_filter:
+        query = query.filter(Acquisition.category_id == category_filter)
+    
+    # Role-based filtering
+    if not current_user.is_admin():
+        if current_user.role == UserRole.SOLICITANTE:
+            query = query.filter(Acquisition.requester_id == current_user.id)
+    
+    acquisitions = query.order_by(Acquisition.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    categories = Category.query.filter_by(active=True).all()
+    
+    return render_template('acquisition/list.html',
+                         acquisitions=acquisitions,
+                         categories=categories,
+                         AcquisitionType=AcquisitionType,
+                         AcquisitionStatus=AcquisitionStatus,
+                         type_filter=type_filter,
+                         status_filter=status_filter,
+                         category_filter=category_filter)
+
+@app.route('/acquisitions/<int:id>')
+@require_login
+def acquisition_detail(id):
+    acquisition = Acquisition.query.options(
+        joinedload(Acquisition.category),
+        joinedload(Acquisition.cost_center),
+        joinedload(Acquisition.requester),
+        joinedload(Acquisition.approver),
+        joinedload(Acquisition.status_history),
+        joinedload(Acquisition.documents)
+    ).get_or_404(id)
+    
+    # Check access permissions
+    if not current_user.is_admin() and current_user.role == UserRole.SOLICITANTE:
+        if acquisition.requester_id != current_user.id:
+            flash('Acesso negado.', 'error')
+            return redirect(url_for('list_acquisitions'))
+    
+    return render_template('acquisition/detail.html',
+                         acquisition=acquisition,
+                         PaymentMethod=PaymentMethod,
+                         AcquisitionStatus=AcquisitionStatus)
+
+@app.route('/acquisitions/<int:id>/update-status', methods=['POST'])
+@require_login
+def update_acquisition_status(id):
+    acquisition = Acquisition.query.get_or_404(id)
+    new_status = AcquisitionStatus(request.form['status'])
+    comment = request.form.get('comment', '')
+    
+    # Check permissions
+    can_update = False
+    if current_user.is_admin():
+        can_update = True
+    elif new_status == AcquisitionStatus.APROVADO and current_user.can_approve():
+        can_update = True
+    elif new_status == AcquisitionStatus.RECEBIDO and current_user.can_receive():
+        can_update = True
+    
+    if not can_update:
+        flash('Você não tem permissão para alterar este status.', 'error')
+        return redirect(url_for('acquisition_detail', id=id))
+    
+    try:
+        old_status = acquisition.status
+        acquisition.status = new_status
+        
+        # Update specific timestamps
+        if new_status == AcquisitionStatus.APROVADO:
+            acquisition.approved_at = datetime.now()
+            acquisition.approver_id = current_user.id
+        elif new_status == AcquisitionStatus.RECEBIDO:
+            acquisition.completed_at = datetime.now()
+        
+        # Update financial info if provided
+        if request.form.get('final_value'):
+            acquisition.final_value = float(request.form['final_value'])
+        if request.form.get('payment_method'):
+            acquisition.payment_method = PaymentMethod(request.form['payment_method'])
+        
+        # Create status history entry
+        status_history = StatusHistory(
+            acquisition_id=acquisition.id,
+            user_id=current_user.id,
+            old_status=old_status,
+            new_status=new_status,
+            comment=comment
+        )
+        
+        db.session.add(status_history)
+        db.session.commit()
+        
+        flash('Status atualizado com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar status: {str(e)}', 'error')
+    
+    return redirect(url_for('acquisition_detail', id=id))
+
+@app.route('/acquisitions/<int:id>/upload-document', methods=['POST'])
+@require_login
+def upload_document(id):
+    acquisition = Acquisition.query.get_or_404(id)
+    
+    if 'file' not in request.files:
+        flash('Nenhum arquivo selecionado.', 'error')
+        return redirect(url_for('acquisition_detail', id=id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado.', 'error')
+        return redirect(url_for('acquisition_detail', id=id))
+    
+    if file:
+        try:
+            # Create uploads directory if it doesn't exist
+            upload_dir = os.path.join(app.root_path, 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Generate secure filename
+            original_filename = file.filename
+            filename = secure_filename(f"{id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{original_filename}")
+            file_path = os.path.join(upload_dir, filename)
+            
+            # Save file
+            file.save(file_path)
+            
+            # Create document record
+            document = Document(
+                acquisition_id=id,
+                user_id=current_user.id,
+                filename=filename,
+                original_filename=original_filename,
+                file_path=file_path,
+                file_size=os.path.getsize(file_path),
+                mime_type=file.mimetype,
+                description=request.form.get('description', '')
+            )
+            
+            db.session.add(document)
+            db.session.commit()
+            
+            flash('Documento enviado com sucesso!', 'success')
+            
+        except Exception as e:
+            flash(f'Erro ao enviar documento: {str(e)}', 'error')
+    
+    return redirect(url_for('acquisition_detail', id=id))
+
+@app.route('/reports')
+@require_login
+def reports():
+    # Summary statistics
+    total_value = db.session.query(func.sum(Acquisition.final_value)).scalar() or 0
+    servicos_value = db.session.query(func.sum(Acquisition.final_value)).filter(
+        Acquisition.type == AcquisitionType.SERVICO
+    ).scalar() or 0
+    insumos_value = db.session.query(func.sum(Acquisition.final_value)).filter(
+        Acquisition.type == AcquisitionType.INSUMO
+    ).scalar() or 0
+    
+    # Monthly data for current year
+    current_year = datetime.now().year
+    monthly_data = db.session.query(
+        func.extract('month', Acquisition.created_at).label('month'),
+        Acquisition.type,
+        func.sum(Acquisition.final_value).label('total'),
+        func.count(Acquisition.id).label('count')
+    ).filter(
+        func.extract('year', Acquisition.created_at) == current_year,
+        Acquisition.final_value.isnot(None)
+    ).group_by(
+        func.extract('month', Acquisition.created_at),
+        Acquisition.type
+    ).all()
+    
+    # Cost center breakdown
+    cost_center_data = db.session.query(
+        CostCenter.name,
+        func.sum(Acquisition.final_value).label('total'),
+        func.count(Acquisition.id).label('count')
+    ).join(Acquisition).filter(
+        Acquisition.final_value.isnot(None)
+    ).group_by(CostCenter.name).all()
+    
+    return render_template('reports/index.html',
+                         total_value=total_value,
+                         servicos_value=servicos_value,
+                         insumos_value=insumos_value,
+                         monthly_data=monthly_data,
+                         cost_center_data=cost_center_data)
+
+@app.route('/reports/export-pdf')
+@require_login
+def export_pdf_report():
+    try:
+        # Get filtered data
+        acquisitions = Acquisition.query.options(
+            joinedload(Acquisition.category),
+            joinedload(Acquisition.cost_center),
+            joinedload(Acquisition.requester)
+        ).all()
+        
+        pdf_file = generate_report_pdf(acquisitions)
+        return send_file(pdf_file, as_attachment=True, download_name='relatorio_aquisicoes.pdf')
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório PDF: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/reports/export-excel')
+@require_login
+def export_excel_report():
+    try:
+        # Get filtered data
+        acquisitions = Acquisition.query.options(
+            joinedload(Acquisition.category),
+            joinedload(Acquisition.cost_center),
+            joinedload(Acquisition.requester)
+        ).all()
+        
+        excel_file = generate_excel_report(acquisitions)
+        return send_file(excel_file, as_attachment=True, download_name='relatorio_aquisicoes.xlsx')
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório Excel: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/admin/users')
+@require_login
+def admin_users():
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    users = User.query.all()
+    return render_template('admin/users.html', users=users, UserRole=UserRole)
+
+@app.route('/admin/users/<string:user_id>/update-role', methods=['POST'])
+@require_login
+def update_user_role(user_id):
+    if not current_user.is_admin():
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    user = User.query.get_or_404(user_id)
+    new_role = UserRole(request.form['role'])
+    
+    try:
+        user.role = new_role
+        db.session.commit()
+        flash(f'Perfil do usuário {user.full_name} atualizado para {new_role.value}!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar perfil: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_users'))
+
+# Initialize default data
+def create_default_data():
+    # Create default categories
+    if Category.query.count() == 0:
+        # Service categories
+        service_categories = [
+            ('Manutenção Predial', 'Pintura, elétrica, hidráulica, reformas'),
+            ('Serviços de Limpeza', 'Limpeza, jardinagem e portaria'),
+            ('Consultoria/Treinamento', 'Consultorias ou treinamentos externos'),
+            ('Instalação/Configuração', 'Instalação ou configuração de sistemas'),
+            ('Mão de Obra Temporária', 'Contratos temporários de mão de obra')
+        ]
+        
+        for name, desc in service_categories:
+            category = Category(name=name, description=desc, type=AcquisitionType.SERVICO)
+            db.session.add(category)
+        
+        # Supply categories
+        supply_categories = [
+            ('Equipamentos de Laboratório', 'Multímetros, ferramentas, máquinas'),
+            ('Equipamentos de Informática', 'Computadores e periféricos'),
+            ('Equipamentos de Cursos', 'Dev, logística, mecânica, eletrotécnica'),
+            ('Materiais de Consumo', 'Papel, tinta, cabos, peças'),
+            ('Software/Licenças', 'Software e licenças de sistemas')
+        ]
+        
+        for name, desc in supply_categories:
+            category = Category(name=name, description=desc, type=AcquisitionType.INSUMO)
+            db.session.add(category)
+    
+    # Create default cost centers
+    if CostCenter.query.count() == 0:
+        cost_centers = [
+            ('ADM', 'Administração', 'Centro de custo administrativo'),
+            ('LAB', 'Laboratórios', 'Laboratórios e oficinas'),
+            ('INFO', 'Informática', 'Tecnologia da informação'),
+            ('MAN', 'Manutenção', 'Manutenção predial'),
+            ('CURSO', 'Cursos', 'Cursos técnicos e profissionalizantes')
+        ]
+        
+        for code, name, desc in cost_centers:
+            cost_center = CostCenter(code=code, name=name, description=desc)
+            db.session.add(cost_center)
+    
+    db.session.commit()

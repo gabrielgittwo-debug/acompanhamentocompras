@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitação #{{ acquisition.id }} - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('list_acquisitions') }}">Solicitações</a></li>
+                    <li class="breadcrumb-item active">Solicitação #{{ acquisition.id }}</li>
+                </ol>
+            </nav>
+            <h1 class="h3 senai-text-color">
+                <i class="fas fa-file-alt me-2"></i>
+                Solicitação #{{ acquisition.id }}
+            </h1>
+            <p class="text-muted">{{ acquisition.title }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Basic Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informações Básicas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tipo:</label>
+                            <div>
+                                <span class="badge bg-{{ 'success' if acquisition.type.value == 'servico' else 'info' }} fs-6">
+                                    {{ acquisition.type_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Categoria:</label>
+                            <div>{{ acquisition.category.name if acquisition.category else 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Status Atual:</label>
+                            <div>
+                                <span class="badge 
+                                    {% if acquisition.status.value == 'em_analise' %}bg-warning
+                                    {% elif acquisition.status.value == 'aprovado' %}bg-success
+                                    {% elif acquisition.status.value == 'em_cotacao' %}bg-info
+                                    {% elif acquisition.status.value == 'pedido_realizado' %}bg-primary
+                                    {% elif acquisition.status.value == 'recebido' %}bg-success
+                                    {% elif acquisition.status.value == 'fechado' %}bg-secondary
+                                    {% endif %} fs-6">
+                                    {{ acquisition.status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Centro de Custo:</label>
+                            <div>{{ acquisition.cost_center.name if acquisition.cost_center else 'N/A' }} 
+                                ({{ acquisition.cost_center.code if acquisition.cost_center else 'N/A' }})</div>
+                        </div>
+                        {% if acquisition.quantity %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Quantidade:</label>
+                            <div>{{ acquisition.quantity }} {{ acquisition.unit or '' }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-3">
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Descrição:</label>
+                            <div class="border rounded p-3 bg-light">
+                                {{ acquisition.description }}
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Justificativa:</label>
+                            <div class="border rounded p-3 bg-light">
+                                {{ acquisition.justification }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-dollar-sign me-2"></i>
+                        Informações Financeiras
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Valor Estimado:</label>
+                            <div class="fs-5">
+                                {% if acquisition.estimated_value %}
+                                    R$ {{ "%.2f"|format(acquisition.estimated_value) }}
+                                {% else %}
+                                    <span class="text-muted">Não informado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Valor Final:</label>
+                            <div class="fs-5 text-success">
+                                {% if acquisition.final_value %}
+                                    R$ {{ "%.2f"|format(acquisition.final_value) }}
+                                {% else %}
+                                    <span class="text-muted">Não definido</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fonte da Verba:</label>
+                            <div>
+                                {% if acquisition.budget_source %}
+                                    {% if acquisition.budget_source.value == 'verba_estadual' %}Verba Estadual
+                                    {% elif acquisition.budget_source.value == 'recurso_proprio' %}Recurso Próprio
+                                    {% elif acquisition.budget_source.value == 'federal' %}Recurso Federal
+                                    {% else %}Outros{% endif %}
+                                {% else %}
+                                    <span class="text-muted">Não informado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Método de Pagamento:</label>
+                            <div>
+                                {% if acquisition.payment_method %}
+                                    {% if acquisition.payment_method.value == 'dinheiro' %}Dinheiro
+                                    {% elif acquisition.payment_method.value == 'cartao_credito' %}Cartão de Crédito
+                                    {% elif acquisition.payment_method.value == 'cartao_debito' %}Cartão de Débito
+                                    {% elif acquisition.payment_method.value == 'transferencia' %}Transferência
+                                    {% elif acquisition.payment_method.value == 'boleto' %}Boleto
+                                    {% elif acquisition.payment_method.value == 'pix' %}PIX
+                                    {% else %}{{ acquisition.payment_method.value }}{% endif %}
+                                {% else %}
+                                    <span class="text-muted">Não definido</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-paperclip me-2"></i>
+                        Documentos Anexados
+                    </h5>
+                    <button type="button" class="btn btn-outline-senai btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-upload me-1"></i>
+                        Anexar Documento
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if acquisition.documents %}
+                        <div class="list-group list-group-flush">
+                            {% for document in acquisition.documents %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ document.original_filename }}</h6>
+                                    <small class="text-muted">
+                                        Enviado por {{ document.uploaded_by.full_name }} em {{ document.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {% if document.description %} - {{ document.description }}{% endif %}
+                                    </small>
+                                </div>
+                                <div>
+                                    {% if document.file_size %}
+                                        <span class="badge bg-light text-dark">{{ "%.1f"|format(document.file_size/1024) }} KB</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-alt text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Nenhum documento anexado</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Status History -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Histórico de Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if acquisition.status_history %}
+                        <div class="timeline">
+                            {% for history in acquisition.status_history %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                {% if history.old_status %}
+                                                    {{ history.old_status.value.replace('_', ' ').title() }} → 
+                                                {% endif %}
+                                                <span class="text-primary">{{ history.new_status.value.replace('_', ' ').title() }}</span>
+                                            </h6>
+                                            <p class="mb-1">Por: {{ history.user.full_name }}</p>
+                                            {% if history.comment %}
+                                                <p class="text-muted small mb-0">{{ history.comment }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted">{{ history.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clock text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Nenhum histórico disponível</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Update Status -->
+            {% if current_user.is_admin() or 
+                 (acquisition.status.value == 'em_analise' and current_user.can_approve()) or
+                 (acquisition.status.value in ['aprovado', 'em_cotacao', 'pedido_realizado'] and current_user.can_receive()) %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Atualizar Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('update_acquisition_status', id=acquisition.id) }}">
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Novo Status:</label>
+                            <select class="form-select" id="status" name="status" required>
+                                {% for status in AcquisitionStatus %}
+                                    {% if status != acquisition.status %}
+                                    <option value="{{ status.value }}">
+                                        {% if status.value == 'em_analise' %}Em Análise
+                                        {% elif status.value == 'aprovado' %}Aprovado
+                                        {% elif status.value == 'em_cotacao' %}Em Cotação
+                                        {% elif status.value == 'pedido_realizado' %}Pedido Realizado
+                                        {% elif status.value == 'recebido' %}Recebido/Concluído
+                                        {% elif status.value == 'fechado' %}Fechado
+                                        {% endif %}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="comment" class="form-label">Comentário:</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="3" 
+                                      placeholder="Adicione um comentário sobre a mudança..."></textarea>
+                        </div>
+                        
+                        <div id="financial-fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="final_value" class="form-label">Valor Final (R$):</label>
+                                <input type="number" class="form-control" id="final_value" name="final_value" 
+                                       step="0.01" min="0" value="{{ acquisition.final_value or '' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="payment_method" class="form-label">Método de Pagamento:</label>
+                                <select class="form-select" id="payment_method" name="payment_method">
+                                    <option value="">Selecione...</option>
+                                    {% for method in PaymentMethod %}
+                                    <option value="{{ method.value }}" 
+                                            {% if acquisition.payment_method == method %}selected{% endif %}>
+                                        {% if method.value == 'dinheiro' %}Dinheiro
+                                        {% elif method.value == 'cartao_credito' %}Cartão de Crédito
+                                        {% elif method.value == 'cartao_debito' %}Cartão de Débito
+                                        {% elif method.value == 'transferencia' %}Transferência
+                                        {% elif method.value == 'boleto' %}Boleto
+                                        {% elif method.value == 'pix' %}PIX
+                                        {% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-senai w-100">
+                            <i class="fas fa-save me-2"></i>
+                            Atualizar Status
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info me-2"></i>
+                        Informações Gerais
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted">Solicitante:</small>
+                            <div class="fw-bold">{{ acquisition.requester.full_name }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Data da Solicitação:</small>
+                            <div>{{ acquisition.created_at.strftime('%d/%m/%Y') }}</div>
+                        </div>
+                        {% if acquisition.approver %}
+                        <div class="col-6">
+                            <small class="text-muted">Aprovado por:</small>
+                            <div class="fw-bold">{{ acquisition.approver.full_name }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Data da Aprovação:</small>
+                            <div>{{ acquisition.approved_at.strftime('%d/%m/%Y') if acquisition.approved_at else 'N/A' }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="col-12">
+                            <small class="text-muted">Dias desde criação:</small>
+                            <div class="fs-5 text-primary">{{ acquisition.days_since_creation }} dias</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Ações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('list_acquisitions') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Voltar à Lista
+                        </a>
+                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>
+                            Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Anexar Documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('upload_document', id=acquisition.id) }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Arquivo:</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <div class="form-text">Máximo 16MB. Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição (opcional):</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               placeholder="Ex: Nota fiscal, orçamento, contrato...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-senai">
+                        <i class="fas fa-upload me-2"></i>
+                        Enviar Documento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show financial fields when status requires it
+    document.getElementById('status').addEventListener('change', function() {
+        const financialFields = document.getElementById('financial-fields');
+        const selectedStatus = this.value;
+        
+        if (selectedStatus === 'recebido' || selectedStatus === 'fechado') {
+            financialFields.style.display = 'block';
+        } else {
+            financialFields.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

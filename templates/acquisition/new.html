@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Solicitação - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="card-title mb-0 senai-text-color">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Nova Solicitação de Aquisição
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_acquisition') }}">
+                        <!-- Basic Information -->
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="type" class="form-label">Tipo de Aquisição <span class="text-danger">*</span></label>
+                                <select class="form-select" id="type" name="type" required onchange="updateCategories()">
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="{{ AcquisitionType.SERVICO.value }}">Serviço</option>
+                                    <option value="{{ AcquisitionType.INSUMO.value }}">Insumo</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="category_id" class="form-label">Categoria <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Primeiro selecione o tipo</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label for="title" class="form-label">Título da Solicitação <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="title" name="title" required 
+                                       placeholder="Ex: Manutenção do ar condicionado do laboratório">
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label for="description" class="form-label">Descrição Detalhada <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="description" name="description" rows="4" required 
+                                          placeholder="Descreva detalhadamente o que está sendo solicitado"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2" id="quantity-fields" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="quantity" class="form-label">Quantidade</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" min="1">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="unit" class="form-label">Unidade</label>
+                                <input type="text" class="form-control" id="unit" name="unit" 
+                                       placeholder="Ex: unidade, kg, metros">
+                            </div>
+                        </div>
+                        
+                        <!-- Financial Information -->
+                        <hr class="my-4">
+                        <h5 class="senai-text-color">
+                            <i class="fas fa-dollar-sign me-2"></i>
+                            Informações Financeiras
+                        </h5>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label for="estimated_value" class="form-label">Valor Estimado (R$)</label>
+                                <input type="number" class="form-control" id="estimated_value" name="estimated_value" 
+                                       step="0.01" min="0" placeholder="0,00">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="budget_source" class="form-label">Fonte da Verba <span class="text-danger">*</span></label>
+                                <select class="form-select" id="budget_source" name="budget_source" required>
+                                    <option value="">Selecione a fonte</option>
+                                    {% for source in BudgetSource %}
+                                    <option value="{{ source.value }}">
+                                        {% if source.value == 'verba_estadual' %}Verba Estadual
+                                        {% elif source.value == 'recurso_proprio' %}Recurso Próprio
+                                        {% elif source.value == 'federal' %}Recurso Federal
+                                        {% else %}Outros{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label for="cost_center_id" class="form-label">Centro de Custo <span class="text-danger">*</span></label>
+                                <select class="form-select" id="cost_center_id" name="cost_center_id" required>
+                                    <option value="">Selecione o centro de custo</option>
+                                    {% for cost_center in cost_centers %}
+                                    <option value="{{ cost_center.id }}">{{ cost_center.name }} ({{ cost_center.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Justification -->
+                        <hr class="my-4">
+                        <h5 class="senai-text-color">
+                            <i class="fas fa-file-alt me-2"></i>
+                            Justificativa
+                        </h5>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label for="justification" class="form-label">Justificativa da Necessidade <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="justification" name="justification" rows="4" required 
+                                          placeholder="Justifique a necessidade desta aquisição..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <hr class="my-4">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-senai">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Criar Solicitação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const categories = {{ categories | tojson }};
+    
+    function updateCategories() {
+        const typeSelect = document.getElementById('type');
+        const categorySelect = document.getElementById('category_id');
+        const quantityFields = document.getElementById('quantity-fields');
+        
+        const selectedType = typeSelect.value;
+        
+        // Clear categories
+        categorySelect.innerHTML = '<option value="">Selecione a categoria</option>';
+        
+        if (selectedType) {
+            // Show/hide quantity fields based on type
+            if (selectedType === 'insumo') {
+                quantityFields.style.display = 'block';
+            } else {
+                quantityFields.style.display = 'none';
+                document.getElementById('quantity').value = '';
+                document.getElementById('unit').value = '';
+            }
+            
+            // Filter categories by type
+            const filteredCategories = categories.filter(cat => cat.type === selectedType);
+            
+            filteredCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+            });
+        } else {
+            quantityFields.style.display = 'none';
+        }
+    }
+    
+    // Format currency input
+    document.getElementById('estimated_value').addEventListener('input', function(e) {
+        let value = e.target.value;
+        if (value) {
+            value = parseFloat(value).toFixed(2);
+            e.target.value = value;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Bem-vindo - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-xl-6">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5 text-center">
+                        <!-- SENAI Logo/Icon -->
+                        <div class="mb-4">
+                            <i class="fas fa-industry senai-text-color" style="font-size: 4rem;"></i>
+                        </div>
+                        
+                        <h1 class="display-5 fw-bold senai-text-color mb-3">
+                            SENAI Morvan Figueiredo
+                        </h1>
+                        
+                        <h2 class="h4 text-muted mb-4">
+                            Sistema de Acompanhamento de Aquisições
+                        </h2>
+                        
+                        <p class="lead text-muted mb-4">
+                            Gerencie e acompanhe todo o processo de aquisição de serviços e insumos, 
+                            desde a solicitação até a conclusão, com rastreabilidade completa e controle financeiro.
+                        </p>
+                        
+                        <div class="row g-3 mb-5">
+                            <div class="col-md-6">
+                                <div class="feature-card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-tools senai-text-color mb-3" style="font-size: 2rem;"></i>
+                                        <h5>Serviços</h5>
+                                        <p class="small text-muted mb-0">
+                                            Manutenção, limpeza, consultoria e treinamentos
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="feature-card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-boxes senai-text-color mb-3" style="font-size: 2rem;"></i>
+                                        <h5>Insumos</h5>
+                                        <p class="small text-muted mb-0">
+                                            Equipamentos, materiais e licenças
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('replit_auth.login') }}" class="btn btn-senai btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                Acessar o Sistema
+                            </a>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Acesso restrito a usuários autorizados
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Features Section -->
+                <div class="row g-4 mt-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon senai-bg rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-route text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Workflow Completo</h6>
+                            <p class="small text-muted">
+                                Acompanhe desde a solicitação até a conclusão
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon senai-bg rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-chart-line text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Relatórios Avançados</h6>
+                            <p class="small text-muted">
+                                Gere relatórios em PDF e Excel
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="feature-icon senai-bg rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <i class="fas fa-lock text-white"></i>
+                            </div>
+                            <h6 class="fw-bold">Controle de Acesso</h6>
+                            <p class="small text-muted">
+                                Perfis específicos por função
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

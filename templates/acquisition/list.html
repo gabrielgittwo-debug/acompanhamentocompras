@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações - SENAI Morvan Figueiredo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 senai-text-color">
+                <i class="fas fa-list me-2"></i>
+                Solicitações de Aquisição
+            </h1>
+            <p class="text-muted">Gerencie e acompanhe todas as solicitações</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('new_acquisition') }}" class="btn btn-senai">
+                <i class="fas fa-plus me-2"></i>
+                Nova Solicitação
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="type" class="form-label">Tipo</label>
+                    <select class="form-select" id="type" name="type">
+                        <option value="">Todos os tipos</option>
+                        <option value="{{ AcquisitionType.SERVICO.value }}" 
+                                {% if type_filter == AcquisitionType.SERVICO.value %}selected{% endif %}>
+                            Serviços
+                        </option>
+                        <option value="{{ AcquisitionType.INSUMO.value }}" 
+                                {% if type_filter == AcquisitionType.INSUMO.value %}selected{% endif %}>
+                            Insumos
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos os status</option>
+                        {% for status in AcquisitionStatus %}
+                        <option value="{{ status.value }}" 
+                                {% if status_filter == status.value %}selected{% endif %}>
+                            {% if status.value == 'em_analise' %}Em Análise
+                            {% elif status.value == 'aprovado' %}Aprovado
+                            {% elif status.value == 'em_cotacao' %}Em Cotação
+                            {% elif status.value == 'pedido_realizado' %}Pedido Realizado
+                            {% elif status.value == 'recebido' %}Recebido/Concluído
+                            {% elif status.value == 'fechado' %}Fechado
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="category_id" class="form-label">Categoria</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">Todas as categorias</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" 
+                                {% if category_filter == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-senai">
+                            <i class="fas fa-search me-2"></i>
+                            Filtrar
+                        </button>
+                        <a href="{{ url_for('list_acquisitions') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>
+                            Limpar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if acquisitions.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Título</th>
+                                <th>Tipo</th>
+                                <th>Categoria</th>
+                                <th>Status</th>
+                                <th>Solicitante</th>
+                                <th>Valor</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for acquisition in acquisitions.items %}
+                            <tr>
+                                <td>
+                                    <strong>#{{ acquisition.id }}</strong>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ acquisition.title[:40] }}{% if acquisition.title|length > 40 %}...{% endif %}</div>
+                                    <small class="text-muted">{{ acquisition.cost_center.name if acquisition.cost_center }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if acquisition.type.value == 'servico' else 'info' }}">
+                                        {{ acquisition.type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ acquisition.category.name if acquisition.category }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if acquisition.status.value == 'em_analise' %}bg-warning
+                                        {% elif acquisition.status.value == 'aprovado' %}bg-success
+                                        {% elif acquisition.status.value == 'em_cotacao' %}bg-info
+                                        {% elif acquisition.status.value == 'pedido_realizado' %}bg-primary
+                                        {% elif acquisition.status.value == 'recebido' %}bg-success
+                                        {% elif acquisition.status.value == 'fechado' %}bg-secondary
+                                        {% endif %}">
+                                        {{ acquisition.status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ acquisition.requester.full_name }}</td>
+                                <td>
+                                    {% if acquisition.final_value %}
+                                        <strong>R$ {{ "%.2f"|format(acquisition.final_value) }}</strong>
+                                    {% elif acquisition.estimated_value %}
+                                        <span class="text-muted">Est: R$ {{ "%.2f"|format(acquisition.estimated_value) }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ acquisition.created_at.strftime('%d/%m/%Y') }}</small>
+                                    <div class="text-muted small">
+                                        {{ acquisition.days_since_creation }} dias
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('acquisition_detail', id=acquisition.id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if acquisitions.pages > 1 %}
+                <nav aria-label="Navegação das solicitações">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if acquisitions.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('list_acquisitions', page=acquisitions.prev_num, 
+                                type=type_filter, status=status_filter, category_id=category_filter) }}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in acquisitions.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != acquisitions.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('list_acquisitions', page=page_num, 
+                                        type=type_filter, status=status_filter, category_id=category_filter) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if acquisitions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('list_acquisitions', page=acquisitions.next_num, 
+                                type=type_filter, status=status_filter, category_id=category_filter) }}">
+                                Próxima
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox text-muted" style="font-size: 4rem;"></i>
+                    <h5 class="text-muted mt-3">Nenhuma solicitação encontrada</h5>
+                    <p class="text-muted">
+                        {% if type_filter or status_filter or category_filter %}
+                            Tente alterar os filtros ou 
+                            <a href="{{ url_for('list_acquisitions') }}">limpar todos os filtros</a>
+                        {% else %}
+                            Crie sua primeira solicitação de aquisição
+                        {% endif %}
+                    </p>
+                    {% if not (type_filter or status_filter or category_filter) %}
+                    <a href="{{ url_for('new_acquisition') }}" class="btn btn-senai mt-2">
+                        <i class="fas fa-plus me-2"></i>
+                        Criar Primeira Solicitação
+                    </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

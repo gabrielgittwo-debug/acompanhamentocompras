@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SENAI Morvan Figueiredo{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 senai-text-color">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                Dashboard - Sistema de Aquisições
+            </h1>
+            <p class="text-muted">Visão geral das aquisições e indicadores</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card senai-bg text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="card-title text-uppercase">Total de Solicitações</h5>
+                            <h2 class="mb-0">{{ total_acquisitions }}</h2>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="card-title text-uppercase">Serviços</h5>
+                            <h2 class="mb-0">{{ servicos_count }}</h2>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tools fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="card-title text-uppercase">Insumos</h5>
+                            <h2 class="mb-0">{{ insumos_count }}</h2>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="card-title text-uppercase">Pendentes</h5>
+                            <h2 class="mb-0">{{ pending_approvals }}</h2>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Charts Section -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Distribuição: Serviços vs Insumos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Distribuição por Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Acquisitions -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Solicitações Recentes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_acquisitions %}
+                        <div class="list-group list-group-flush">
+                            {% for acquisition in recent_acquisitions %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">
+                                        <a href="{{ url_for('acquisition_detail', id=acquisition.id) }}" class="text-decoration-none">
+                                            #{{ acquisition.id }} - {{ acquisition.title[:30] }}
+                                            {% if acquisition.title|length > 30 %}...{% endif %}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">{{ acquisition.created_at.strftime('%d/%m') }}</small>
+                                </div>
+                                <p class="mb-1">
+                                    <span class="badge bg-{{ 'success' if acquisition.type.value == 'servico' else 'info' }}">
+                                        {{ acquisition.type_display }}
+                                    </span>
+                                    <span class="badge bg-secondary ms-1">
+                                        {{ acquisition.status_display }}
+                                    </span>
+                                </p>
+                                <small class="text-muted">
+                                    Por: {{ acquisition.requester.full_name }}
+                                </small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Nenhuma solicitação encontrada</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white">
+                    <a href="{{ url_for('list_acquisitions') }}" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="fas fa-list me-1"></i>
+                        Ver Todas as Solicitações
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Ações Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('new_acquisition') }}" class="btn btn-senai">
+                            <i class="fas fa-plus me-2"></i>
+                            Nova Solicitação
+                        </a>
+                        <a href="{{ url_for('reports') }}" class="btn btn-outline-senai">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Relatórios
+                        </a>
+                        {% if current_user.can_approve() %}
+                        <a href="{{ url_for('list_acquisitions', status='em_analise') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-check me-2"></i>
+                            Aprovar Pendências
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    // Data for charts
+    const typeData = {
+        labels: ['Serviços', 'Insumos'],
+        datasets: [{
+            data: [{{ servicos_count }}, {{ insumos_count }}],
+            backgroundColor: ['#198754', '#0dcaf0'],
+            borderWidth: 0
+        }]
+    };
+    
+    const statusData = {
+        labels: [
+            {% for status, count in status_data %}
+            '{{ status.value.replace("_", " ").title() }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        datasets: [{
+            data: [
+                {% for status, count in status_data %}
+                {{ count }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            backgroundColor: [
+                '#1e4a6b', '#198754', '#0dcaf0', '#ffc107', '#fd7e14', '#dc3545'
+            ],
+            borderWidth: 0
+        }]
+    };
+    
+    // Initialize charts
+    initTypeChart('typeChart', typeData);
+    initStatusChart('statusChart', statusData);
+</script>
+{% endblock %}

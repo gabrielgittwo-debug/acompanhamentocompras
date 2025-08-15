@@ -1,0 +1,119 @@
+Sistema de Acompanhamento de Aquisições – SENAI Morvan Figueiredo
+
+Com separação de Serviços e Insumos
+
+1. Objetivo
+
+Gerenciar e acompanhar todo o processo de aquisição de serviços e insumos, desde a solicitação até a conclusão, garantindo rastreabilidade, categorização e controle financeiro.
+
+2. Categorias de Aquisição
+2.1 Serviços
+
+Manutenção predial (pintura, elétrica, hidráulica, reformas).
+
+Serviços de limpeza, jardinagem e portaria.
+
+Consultorias ou treinamentos externos.
+
+Instalação ou configuração de sistemas.
+
+Contratos temporários de mão de obra.
+
+2.2 Insumos
+
+Equipamentos de laboratório (multímetros, ferramentas, máquinas).
+
+Computadores e periféricos (mouse, teclado, monitores).
+
+Equipamentos de cursos (dev, logística, mecânica, eletrotécnica, etc.).
+
+Materiais de consumo (papel, tinta, cabos, peças).
+
+Software/licenças.
+
+3. Funcionalidades Principais
+3.1 Autenticação
+
+Login obrigatório para todos os usuários.
+
+Perfis: Administrador, Solicitante, Aprovador, Recebimento.
+
+Registro automático do nome, data e hora em cada ação.
+
+3.2 Cadastro da Solicitação
+
+Tipo de aquisição: Serviço ou Insumo (obrigatório).
+
+Subcategoria (ex.: “Manutenção Predial”, “Equipamento de Informática”).
+
+Descrição detalhada.
+
+Quantidade (para insumos) ou escopo (para serviços).
+
+Justificativa da necessidade.
+
+Valor estimado.
+
+3.3 Fluxo e Status
+
+Em Análise
+
+Aprovado
+
+Em Cotação
+
+Pedido Realizado
+
+Recebido / Serviço Concluído
+
+Fechado
+
+Cada mudança de status registra:
+
+Nome do usuário que fez a ação.
+
+Data e hora.
+
+Comentário opcional.
+
+3.4 Registro Financeiro
+
+Valor final da aquisição.
+
+Forma de pagamento.
+
+Centro de custo (por curso, setor ou projeto).
+
+Possibilidade de vincular a uma verba específica (ex.: verba estadual, recurso próprio).
+
+3.5 Relatórios e Indicadores
+
+Gastos por categoria (Serviço/Insumo).
+
+Gastos por curso/setor.
+
+Evolução mensal dos gastos.
+
+Tempo médio entre solicitação e conclusão.
+
+Histórico completo por item ou serviço.
+
+3.6 Extras
+
+Upload de documentos (NF, contrato, comprovantes).
+
+Notificações por e-mail.
+
+Exportar para PDF/Excel.
+
+Dashboard inicial com gráfico de Serviços x Insumos.
+
+Se você quiser, posso já criar o diagrama do fluxo e o layout das telas, com:
+
+Tela de login
+
+Tela de cadastro da solicitação
+
+Tela de acompanhamento separando “Serviços” e “Insumos”
+
+Tela de relatórios com gráficos

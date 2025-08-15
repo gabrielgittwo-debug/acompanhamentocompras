@@ -15,7 +15,7 @@ db = SQLAlchemy(model_class=Base)
 
 # Create the app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET")
+app.secret_key = os.environ.get("SESSION_SECRET") or "your_secret_key_here_66f03d8ecbcca9bca73c5c53f587f19c04ce2deb80a75e325cee814a43c3f1ae"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1) # needed for url_for to generate with https
 
 # Configure the database
